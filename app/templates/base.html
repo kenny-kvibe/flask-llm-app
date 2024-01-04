@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+{%- if error is defined -%}
+	{%- set favicon_base_path = 'img/favicon-error' -%}
+{%- else -%}
+	{%- set favicon_base_path = 'img/favicon' -%}
+{%- endif -%}
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<title>{{ head_title }}</title>
+	<meta name="referrer" content="strict-origin" />
+	<meta name="robots" content="noindex, nofollow" />
+	<meta name="viewport" content="width=device-width, user-scalable=no, shrink-to-fit=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<link rel="shortcut icon" href="{{ url_for('static', filename=favicon_base_path~'.ico', _external=True) }}" type="image/x-icon" />
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/main-style.min.css', _external=True) }}" type="text/css" />
+	<script type="text/javascript" src="{{ url_for('static', filename='js/main-script.js', _external=True) }}" charset="utf-8" defer="defer"></script>
+</head>
+<body id="body"{% if error is defined %} class="error"{% endif %}>
+	<div id="wrap">
+		<div id="section-heading">
+			<img class="heading-img" src="{{ url_for('static', filename=favicon_base_path~'.png', _external=True) }}" />
+			<h1 class="heading-text">{%-
+				if error is not defined %}<a href="{{ request.url|base_url }}" target="_self">{{ head_title }}</a>{%
+				else %}{{ head_title }}{%
+				endif -%}
+			</h1>
+		</div>
+		<div id="section-content">
+			{% block body_content -%}{%- endblock %}
+		</div>
+	</div>
+</body>
+</html>

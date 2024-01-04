@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block body_content %}
+	<h2 id="error-title">
+		<strong class="code">{{ error.code }}</strong>: {{ error.name }}
+	</h2>
+	<p id="error-url">URL: {{ request.url }}</p>
+{% endblock %}

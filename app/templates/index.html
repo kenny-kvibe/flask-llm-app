@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block body_content %}
+	<div id="messages-list"></div>
+	<div id="inputs">
+		<textarea class="input" id="input-text" placeholder="Enter prompt ..."></textarea>
+		<div id="inputs-buttons">
+			<input type="button" class="input" id="input-submit" value="SUBMIT" />
+			<input type="button" class="input" id="input-reset" value="RESET MESSAGES" />
+			<input type="button" class="input" id="input-stop" value="STOP GENERATING" />
+		</div>
+	</div>
+{% endblock %}
