@@ -74,7 +74,6 @@ def init_web_app(app: Flask, llm: llm_model.BaseLLM):
 				if input_text:
 					print(f'> [POST] Prompt: {input_text}\n> Response:\n',
 						llm.generate(input_text), sep='', flush=True)
-					# TODO => Socket.IO event for end generation, ...
 					return { 'message': 'OK' }, 200
 				return { 'message': 'ERROR: NO PROMPT TEXT', 'error': True }, 400
 			return { 'message': 'ERROR: NO POST DATA', 'error': True }, 400
