@@ -1,10 +1,10 @@
 import gc
 import os
 import time
-from typing import Any, Generator
+# from typing import Any, Generator
 import torch
 from datetime import datetime as dt
-from threading import Thread
+# from threading import Thread
 from transformers import pipeline, TextIteratorStreamer  #, ConversationalPipeline
 from transformers.generation.stopping_criteria import StoppingCriteria, StoppingCriteriaList
 from transformers.models.auto import AutoTokenizer, AutoModelForCausalLM
@@ -197,20 +197,20 @@ class TextGenerationLLM (BaseLLM):
 			if key in ('role', 'content')
 		} for msg in self.messages]
 
-	def add_stream_msg(self):
-		if self.gen_response:
-			if self.is_generating:
-				self.add_message('assistant', self.gen_response)
-				self.is_generating = False
+	# def add_stream_msg(self):
+	# 	if self.gen_response:
+	# 		if self.is_generating:
+	# 			self.add_message('assistant', self.gen_response)
+	# 			self.is_generating = False
 
-	def generate_stream(self, inputs:str|list[int]) -> Generator[str, Any, Any]:
-		thread = Thread(target=self.pipe, args=[inputs], kwargs=self.pipe_cfg)
-		thread.start()
-		self.gen_response = ''
-		for text_out in self.streamer:
-			text = str(text_out)
-			self.gen_response += text
-			yield text
+	# def generate_stream(self, inputs:str|list[int]) -> Generator[str, Any, Any]:
+	# 	thread = Thread(target=self.pipe, args=[inputs], kwargs=self.pipe_cfg)
+	# 	thread.start()
+	# 	self.gen_response = ''
+	# 	for text_out in self.streamer:
+	# 		text = str(text_out)
+	# 		self.gen_response += text
+	# 		yield text
 
 	def generate(self, prompt_text:str) -> str:
 		# TextIteratorStreamer:  https://huggingface.co/docs/transformers/main/en/internal/generation_utils#transformers.TextIteratorStreamer.example
