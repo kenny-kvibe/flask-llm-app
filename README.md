@@ -1,6 +1,6 @@
 # Flask LLM App
 
-Flask App with Socket.IO running a Chat Web UI using a LLM (Text Generation: `HuggingFaceH4/zephyr-7b-beta`).
+Flask App *with Socket.IO* running a Chat Web UI using a LLM (Text Generation: `HuggingFaceH4/zephyr-7b-beta`).
 
 The App will auto-open in Firefox (you can change it in `app/constants.py`)
 
