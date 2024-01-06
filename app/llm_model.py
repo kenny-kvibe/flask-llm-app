@@ -4,7 +4,7 @@ import time
 # from typing import Any, Generator
 import torch
 from datetime import datetime as dt
-# from threading import Thread
+from threading import Thread
 from transformers import pipeline, TextIteratorStreamer  #, ConversationalPipeline
 from transformers.generation.stopping_criteria import StoppingCriteria, StoppingCriteriaList
 from transformers.models.auto import AutoTokenizer, AutoModelForCausalLM
@@ -12,8 +12,8 @@ from transformers.models.auto import AutoTokenizer, AutoModelForCausalLM
 import constants as c
 
 
-os.environ['HF_DATASETS_OFFLINE'] = '1'
-os.environ['TRANSFORMERS_OFFLINE'] = '1'
+os.environ['HF_DATASETS_OFFLINE'] = '1' if c.Env.OFFLINE_MODE else '0'
+os.environ['TRANSFORMERS_OFFLINE'] = '1' if c.Env.OFFLINE_MODE else '0'
 os.environ['TRANSFORMERS_CACHE'] = os.path.join(os.environ['USERPROFILE'], '.transformers_cache')
 
 
@@ -54,8 +54,10 @@ class VariableStopCriteria (StopCriteria):
 
 # ====================================================================
 class BaseLLM:
-	def __init__(self, name:str):
-		self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+	def __init__(self, name:str, device:str = 'auto'):
+		if device == 'auto':
+			device = 'cuda' if torch.cuda.is_available() else 'cpu'
+		self.device = torch.device(device)
 		self.name = name
 		self.short_name = name.split('/', 1)[-1]
 		self.name_map = {'user': 'You', 'assistant': self.short_name}
@@ -110,6 +112,7 @@ class BaseLLM:
 			time.sleep(1)
 			sec += 1
 		response = f'Done generating, prompt: "{prompt_text}" ({gen_wait_sec} seconds)'
+		print('> Response:\n', response, '\n', sep='', end='', flush=True)
 		if self.is_generating:
 			self.add_message('assistant', response)
 			self.is_generating = False
@@ -119,14 +122,14 @@ class BaseLLM:
 
 # ====================================================================
 class TextGenerationLLM (BaseLLM):
-	def __init__(self, name:str):
+	def __init__(self, name:str, device:str = 'auto'):
 		self.system_prompt = (
 			'Always Remember: '
-			'You\'re a technical AI chatbot assistant, a senior programmer and you know a lot about Python. '
+			'You\'re a technical AI assistant, a senior programmer and you know a lot about Python. '
 			'You respond short and straight to the point and answer truthfully. '
 			'You respond using up to 80 words maximum!')
 
-		super(self.__class__, self).__init__(name)
+		super(self.__class__, self).__init__(name, device)
 
 		self.stop_crit_var = VariableStopCriteria()
 		self.gen_response = ''
@@ -157,10 +160,13 @@ class TextGenerationLLM (BaseLLM):
 			tokenize=False)
 
 		self.streamer_cfg:dict = dict(
+			clean_up_tokenization_spaces=None,
 			skip_prompt=True,
+			skip_special_tokens=True,
 			timeout=None)
 
 		with torch.no_grad():
+			self.pipe_thread = None
 			self.pipe = pipeline(
 				task='text-generation',
 				model=self.name,
@@ -179,11 +185,19 @@ class TextGenerationLLM (BaseLLM):
 	def reset_messages(self):
 		self.messages = [self.create_message('system', self.system_prompt)]
 
+	def join_pipe_thread(self):
+		if self.pipe_thread is not None:
+			while self.pipe_thread.is_alive():
+				self.pipe_thread.join(0)
+				time.sleep(0.01)
+			self.pipe_thread = None
+
 	def stop_generating(self):
 		if self.is_generating is False:
 			return
 		self.is_generating = False
 		self.stop_crit_var.stop()
+		self.join_pipe_thread()
 		if len(self.messages) > 1 and self.messages[-1]['role'] == 'user':
 			self.messages.pop()
 
@@ -203,7 +217,7 @@ class TextGenerationLLM (BaseLLM):
 	# 			self.add_message('assistant', self.gen_response)
 	# 			self.is_generating = False
 
-	# def generate_stream(self, inputs:str|list[int]) -> Generator[str, Any, Any]:
+	# def generate_stream(self, inputs:str | list[int]) -> Generator[str, Any, Any]:
 	# 	thread = Thread(target=self.pipe, args=[inputs], kwargs=self.pipe_cfg)
 	# 	thread.start()
 	# 	self.gen_response = ''
@@ -228,26 +242,24 @@ class TextGenerationLLM (BaseLLM):
 		self.add_message('user', prompt_text)
 		self.stop_crit_var.reset()
 
+		if self.pipe.tokenizer is None:
+			return ''
+
 		with torch.no_grad():
 			with self.pipe.device_placement():
-				inputs = self.pipe.tokenizer.apply_chat_template(self.chat_template_msgs(), **self.tokenizer_cfg)  #type:ignore
-				outputs = self.pipe(inputs, **self.pipe_cfg)  #type:ignore
-				# thread = Thread(target=self.pipe, args=[inputs], kwargs=self.pipe_cfg)
-				# thread.start()
-				# response = ''
-				# for text_out in self.streamer:
-				# 	response += text_out
-				# 	print(text_out, end='')
-				# print(end='\n', flush=True)
-		# if response:
-		# 	if self.is_generating:
-		# 		self.add_message('assistant', response)
-		# 		self.is_generating = False
-		# 		return response
-		if outputs:
-			response = str(outputs[0]['generated_text']).strip()  #type:ignore
+				inputs = self.pipe.tokenizer.apply_chat_template(self.chat_template_msgs(), **self.tokenizer_cfg)
+				self.pipe_thread = Thread(target=self.pipe, args=[inputs], kwargs=self.pipe_cfg)
+				self.pipe_thread.start()
+				response = ''
+				print('> Response:\n', end='', flush=True)
+				for text_out in self.streamer:
+					response += text_out
+					print(text_out, end='')
+				print(end='\n', flush=True)
+		if response:
 			if self.is_generating:
 				self.add_message('assistant', response)
+				self.join_pipe_thread()
 				self.is_generating = False
 				return response
 		return ''
