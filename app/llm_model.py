@@ -265,7 +265,6 @@ def load() -> LLM:
 	return TextGenerationLLM(c.LLM_MODEL_NAME, 'cuda', True)
 
 
-
 if __name__ == '__main__':
 	llm = TextGenerationLLM(c.LLM_MODEL_NAME, init_text_streamer=False)
 	llm.generate('Hello, what is the Sun?', True)

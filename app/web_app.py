@@ -1,6 +1,4 @@
 #pyright: reportUnusedFunction=none
-import constants as c
-
 import os
 import subprocess as sp
 import time
@@ -10,14 +8,17 @@ from waitress import serve
 from werkzeug.exceptions import HTTPException
 from urllib.parse import urlparse, urlunparse
 
+import constants as c
 import llm_model
 
 
-def main(llm:llm_model.LLM):
+def main() -> int:
 	if c.Env.DEV_MODE:
 		print('-- !! Developer Mode Enabled !! --')
+	llm = llm_model.load()
 	app = create_app(llm)
 	run_app(app, c.Env.HOST, c.Env.PORT)
+	return 0
 
 
 def create_app(llm:llm_model.LLM) -> Flask:
@@ -149,3 +150,7 @@ def init_app_routes(app:Flask, llm:llm_model.LLM):
 			error=error)
 
 	app.register_blueprint(view)
+
+
+if __name__ == '__main__':
+	raise SystemExit(main())
