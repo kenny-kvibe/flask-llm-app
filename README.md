@@ -14,7 +14,7 @@ pip install -r requirements.txt
 
 -----
 
-> Install `Torch v2.1.2` with `CUDA v12.1` and `xformers v0.0.23`
+> Install `Torch == 2.1.2` with `CUDA == 12.1` and `xformers ~= 0.0.23`
 
 ```sh
 python.exe -m pip install -U "torch==2.1.2" torchvision torchaudio torchdiffeq torchsde "xformers~=0.0.23" --index-url https://download.pytorch.org/whl/cu121
