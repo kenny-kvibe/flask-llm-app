@@ -1,0 +1,18 @@
+import llm_model
+
+
+def main() -> int:
+	llm = llm_model.load()
+	prompt = ''
+	try:
+		while (prompt := input('> Prompt: ')):
+			llm.generate(prompt)
+	except KeyboardInterrupt:
+		print('> Interrupted: Ctrl-C\n', end='', flush=True)
+	llm.stop_generating()
+	print('> Exiting ...\n', end='', flush=True)
+	return 0
+
+
+if __name__ == '__main__':
+	raise SystemExit(main())

@@ -1,20 +1,17 @@
+import constants as c
+
 import gc
-import os
 import time
 import torch
 from datetime import datetime as dt
 from threading import Thread
-
-import constants as c
-
-os.environ['HF_DATASETS_OFFLINE'] = '1' if c.Env.OFFLINE_MODE else '0'
-os.environ['TRANSFORMERS_OFFLINE'] = '1' if c.Env.OFFLINE_MODE else '0'
-os.environ['HF_HOME'] = os.path.join(os.environ['USERPROFILE'], '.transformers_cache')
-os.environ['TRANSFORMERS_CACHE'] = os.environ['HF_HOME']
-
 from transformers import pipeline, TextIteratorStreamer
 from transformers.generation.stopping_criteria import StoppingCriteria, StoppingCriteriaList
 from transformers.models.auto import AutoTokenizer, AutoModelForCausalLM
+from typing import TypeAlias
+
+
+LLM:TypeAlias = 'BaseLLM | TextGenerationLLM'
 
 
 # ====================================================================
@@ -122,8 +119,7 @@ class TextGenerationLLM (BaseLLM):
 		self.system_prompt = (
 			'Always Remember: '
 			'You\'re a technical AI assistant, a senior programmer and you know a lot about Python. '
-			'You respond short and straight to the point and answer truthfully. '
-			'You respond using up to 80 words maximum!')
+			'You respond in a very short answer, straight to the point and answer truthfully.')
 
 		super(self.__class__, self).__init__(name, device)
 
@@ -132,19 +128,18 @@ class TextGenerationLLM (BaseLLM):
 		self.pipeline_cfg:dict = dict(
 			device_map=self.device,
 			framework='pt',
-			# pipeline_class=TextGenerationPipeline,
 			return_full_text=False,
 			torch_dtype=torch.bfloat16,
 			trust_remote_code=False)
 
 		self.pipe_cfg:dict = dict(
-			batch_size=8,
+			# batch_size=8,
 			do_sample=True,
 			# max_length=1024,
 			max_new_tokens=512,
 			num_return_sequences=1,
 			stopping_criteria=StoppingCriteriaList([self.stop_crit_var]),
-			temperature=0.95,
+			temperature=0.9,
 			top_k=50,
 			top_p=1.0,
 			use_cache=True)
@@ -223,7 +218,6 @@ class TextGenerationLLM (BaseLLM):
 			return print('> Error: Prompt text is empty!')
 
 		self.is_generating = True
-		print(f'> Generating response: {self.full_name}')
 		self.add_message('user', self.gen_prompt)
 		self.stop_crit_var.reset()
 
@@ -237,7 +231,7 @@ class TextGenerationLLM (BaseLLM):
 					outputs = self.pipe(inputs, **self.pipe_cfg)  #type:ignore
 					if outputs:
 						self.gen_response = str(outputs[0]['generated_text']).strip()  #type:ignore
-					print(f'> Response:\n{self.gen_response}\n> ---------\n', end='', flush=True)
+					print(f'> Response:\n{self.gen_response}\n> Done.\n', end='', flush=True)
 				else:
 					self.pipe_thread = Thread(target=self.pipe, args=[inputs], kwargs=self.pipe_cfg)
 					self.pipe_thread.start()
@@ -245,7 +239,7 @@ class TextGenerationLLM (BaseLLM):
 					for text_out in self.text_iter_streamer:
 						self.gen_response += text_out
 						print(text_out, end='', flush=True)
-					print('\n> ---------\n', end='', flush=True)
+					print('\n> Done.\n', end='', flush=True)
 
 		if self.gen_response and self.is_generating:
 			self.add_message('assistant', self.gen_response)
@@ -255,7 +249,7 @@ class TextGenerationLLM (BaseLLM):
 
 
 # ====================================================================
-def load() -> BaseLLM|TextGenerationLLM:
+def load() -> LLM:
 	if c.Env.DEV_MODE:
 		return BaseLLM('Testing-LLM')
 	return TextGenerationLLM(c.LLM_MODEL_NAME)

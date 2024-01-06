@@ -74,7 +74,8 @@
 
 		const updateMessagesList = async (checkGeneration=false) => {
 			const response = await sendPostRequest(`${baseUrl}/llm-list-msgs`);
-			console.log(response['message'])
+			console.log(response['message']);
+			// TODO: use `response['response']`
 			if (checkGeneration)
 				generator.isGenerating = response['is-generating'];
 			if (!response['messages-list'])

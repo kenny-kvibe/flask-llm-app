@@ -3,20 +3,27 @@ import os
 import psutil
 import socket
 import sys
+import warnings
+
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=UserWarning)
 
 
 ROOT_PATH = os.path.dirname(__file__)
-
 dotenv.load_dotenv(os.path.join(ROOT_PATH, '.env'))
 
-BROWSER_BIN_PATH = os.path.join(
-	os.environ.get('PROGRAMFILES', 'C:\\Program Files'),
-	'Mozilla Firefox', 'private_browsing.exe')
+
+BROWSER_BIN_PATH   = os.path.join(os.environ['PROGRAMFILES'], 'Mozilla Firefox', 'private_browsing.exe')
+TRANSFORMERS_CACHE = os.path.join(os.environ['USERPROFILE'], '.transformers_cache')
+
 
 APP_TITLE = 'Flask LLM'
 
 # HF:  https://huggingface.co/HuggingFaceH4/zephyr-7b-beta
+# HF:  https://huggingface.co/argilla/notus-7b-v1
+
 LLM_MODEL_NAME = 'HuggingFaceH4/zephyr-7b-beta'
+# LLM_MODEL_NAME = 'argilla/notus-7b-v1'
 
 
 def get_local_ipv4(start_ipv4:str = '192.168.') -> str:
@@ -33,7 +40,7 @@ class DefaultEnv:
 	argc = len(sys.argv)
 	true_params = ('1', 'true', 'y', 'yes', True, 1)
 
-	OFFLINE_MODE = True
+	OFFLINE_MODE = False
 	OPEN_BROWSER = True
 	DEV_MODE = False
 	PORT = 80
@@ -65,3 +72,9 @@ class Env:
 	HOST = os.environ.get('HOST', '')
 	if HOST == '':
 		HOST = get_local_ipv4()
+
+
+os.environ['HF_DATASETS_OFFLINE'] = '1' if Env.OFFLINE_MODE else '0'
+os.environ['TRANSFORMERS_OFFLINE'] = '1' if Env.OFFLINE_MODE else '0'
+os.environ['TRANSFORMERS_CACHE'] = TRANSFORMERS_CACHE
+os.environ['HF_HOME'] = TRANSFORMERS_CACHE

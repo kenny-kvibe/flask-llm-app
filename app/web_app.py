@@ -1,4 +1,6 @@
 #pyright: reportUnusedFunction=none
+import constants as c
+
 import os
 import subprocess as sp
 import time
@@ -8,18 +10,17 @@ from waitress import serve
 from werkzeug.exceptions import HTTPException
 from urllib.parse import urlparse, urlunparse
 
-import constants as c
 import llm_model
 
 
-def main(llm:llm_model.BaseLLM):
+def main(llm:llm_model.LLM):
 	if c.Env.DEV_MODE:
 		print('-- !! Developer Mode Enabled !! --')
 	app = create_app(llm)
 	run_app(app, c.Env.HOST, c.Env.PORT)
 
 
-def create_app(llm:llm_model.BaseLLM) -> Flask:
+def create_app(llm:llm_model.LLM) -> Flask:
 	app = Flask(__name__)
 	app.config['SECRET_KEY'] = os.urandom(32).hex()
 	init_app_filters(app)
@@ -78,7 +79,7 @@ def init_app_filters(app:Flask):
 		return urlunparse(urlp._replace(netloc=netloc))
 
 
-def init_app_routes(app:Flask, llm:llm_model.BaseLLM):
+def init_app_routes(app:Flask, llm:llm_model.LLM):
 	view = Blueprint(
 		'view',
 		app.import_name,
@@ -94,6 +95,7 @@ def init_app_routes(app:Flask, llm:llm_model.BaseLLM):
 			if data:
 				input_text = data.get('prompt', '').strip()
 				if input_text:
+					print(f'> Generating: {llm.full_name}')
 					print(f'> [POST] Prompt: {input_text}\n', end='', flush=True)
 					llm.generate(input_text)
 					return { 'message': 'OK' }, 200
@@ -109,10 +111,12 @@ def init_app_routes(app:Flask, llm:llm_model.BaseLLM):
 	def llm_list_msgs():
 		return {
 			'message': 'OK',
+			'prompt': llm.gen_prompt,
+			'response': llm.gen_response,
 			'messages-list': [{
 				'name': llm.name_map[msg['role']],
-				'text': Markup.escape(msg['content']),
-				'date': msg['date']
+				'date': msg['date'],
+				'text': Markup.escape(msg['content'])
 			} for msg in llm.list_messages()],
 			'is-generating': llm.is_generating
 		}, 200
