@@ -95,9 +95,9 @@ def init_app_routes(app:Flask, llm:llm_model.LLM):
 			if data:
 				input_text = data.get('prompt', '').strip()
 				if input_text:
+					print(f'> [POST]\n', end='', flush=True)
 					print(f'> Generating: {llm.full_name}')
-					print(f'> [POST] Prompt: {input_text}\n', end='', flush=True)
-					llm.generate(input_text)
+					llm.generate(input_text, True)
 					return { 'message': 'OK' }, 200
 				return { 'message': 'ERROR: NO PROMPT TEXT', 'error': True }, 400
 			return { 'message': 'ERROR: NO POST DATA', 'error': True }, 400

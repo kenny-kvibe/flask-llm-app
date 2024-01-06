@@ -6,7 +6,7 @@ def main() -> int:
 	prompt = ''
 	try:
 		while (prompt := input('> Prompt: ')):
-			llm.generate(prompt)
+			llm.generate(prompt, False)
 	except KeyboardInterrupt:
 		print('> Interrupted: Ctrl-C\n', end='', flush=True)
 	llm.stop_generating()

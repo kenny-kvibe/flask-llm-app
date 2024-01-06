@@ -98,14 +98,20 @@ class BaseLLM:
 		if len(self.messages) > 0 and self.messages[-1]['role'] == 'user':
 			self.messages.pop()
 
-	def generate(self, prompt_text:str):
+	def generate(self, prompt_text:str, print_prompt:bool = False):
 		sec, gen_wait_sec = 0, 7
 		self.is_generating = True
 		self.gen_prompt = prompt_text.strip()
+
+		if print_prompt:
+			print(f'> Prompt: {self.gen_prompt}\n', end='', flush=True)
+
 		self.add_message('user', self.gen_prompt)
+
 		while self.is_generating and sec < gen_wait_sec:
 			time.sleep(1)
 			sec += 1
+
 		self.gen_response = f'Done generating, prompt: "{self.gen_prompt}" ({gen_wait_sec} seconds)'
 		print('> Response:\n', self.gen_response, '\n', sep='', end='', flush=True)
 		if self.is_generating:
@@ -115,7 +121,7 @@ class BaseLLM:
 
 # ====================================================================
 class TextGenerationLLM (BaseLLM):
-	def __init__(self, name:str, device:str = 'auto', init_text_stream:bool = True):
+	def __init__(self, name:str, device:str = 'auto', init_text_streamer:bool = True):
 		self.system_prompt = (
 			'Always Remember: '
 			'You\'re a technical AI assistant, a senior programmer and you know a lot about Python. '
@@ -169,7 +175,7 @@ class TextGenerationLLM (BaseLLM):
 				if self.pipe.tokenizer is None:
 					self.pipe.tokenizer = AutoTokenizer.from_pretrained(self.name, device_map=self.device)
 
-				if init_text_stream:
+				if init_text_streamer:
 					self.text_iter_streamer = TextIteratorStreamer(self.pipe.tokenizer, **self.text_iter_cfg)  #type:ignore
 					self.pipe_cfg['streamer'] = self.text_iter_streamer
 				else:
@@ -205,7 +211,7 @@ class TextGenerationLLM (BaseLLM):
 			if key in ('role', 'content')
 		} for msg in self.messages]
 
-	def generate(self, prompt_text:str):
+	def generate(self, prompt_text:str, print_prompt:bool = False):
 		# TextIteratorStreamer:  https://huggingface.co/docs/transformers/main/en/internal/generation_utils#transformers.TextIteratorStreamer.example
 		# gen. utils:            https://huggingface.co/docs/transformers/main/en/internal/generation_utils
 		# gen. strategy:         https://huggingface.co/docs/transformers/generation_strategies
@@ -217,12 +223,16 @@ class TextGenerationLLM (BaseLLM):
 		if not self.gen_prompt:
 			return print('> Error: Prompt text is empty!')
 
-		self.is_generating = True
-		self.add_message('user', self.gen_prompt)
-		self.stop_crit_var.reset()
-
 		if self.pipe.tokenizer is None:
 			return print('> Error: No tokenizer loaded !')
+
+		self.is_generating = True
+
+		if print_prompt:
+			print(f'> Prompt: {self.gen_prompt}\n', end='', flush=True)
+
+		self.add_message('user', self.gen_prompt)
+		self.stop_crit_var.reset()
 
 		with torch.no_grad():
 			with self.pipe.device_placement():
@@ -252,17 +262,12 @@ class TextGenerationLLM (BaseLLM):
 def load() -> LLM:
 	if c.Env.DEV_MODE:
 		return BaseLLM('Testing-LLM')
-	return TextGenerationLLM(c.LLM_MODEL_NAME)
+	return TextGenerationLLM(c.LLM_MODEL_NAME, 'cuda', True)
+
 
 
 if __name__ == '__main__':
-	llm = TextGenerationLLM(c.LLM_MODEL_NAME)
-
-	prompt = 'Hello, what is the Sun?'
-	print(f'> Prompt: {prompt}')
-	print(f'> Response: {llm.generate(prompt)}')
-
-	prompt = 'What about the Moon, Mars and other planets?'
-	print(f'> Prompt: {prompt}')
-	print(f'> Response: {llm.generate(prompt)}')
+	llm = TextGenerationLLM(c.LLM_MODEL_NAME, init_text_streamer=False)
+	llm.generate('Hello, what is the Sun?', True)
+	llm.generate('What about the Moon, Mars and other planets?', True)
 	raise SystemExit(0)
