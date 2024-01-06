@@ -6,13 +6,15 @@ from flask import Flask, Blueprint, render_template, request
 from markupsafe import Markup
 from waitress import serve
 from werkzeug.exceptions import HTTPException
-from urllib.parse import urlsplit
+from urllib.parse import urlparse, urlunparse
 
 import constants as c
 import llm_model
 
 
 def main(llm:llm_model.BaseLLM):
+	if c.Env.DEV_MODE:
+		print('-- !! Developer Mode Enabled !! --')
 	app = create_app(llm)
 	run_app(app, c.Env.HOST, c.Env.PORT)
 
@@ -60,9 +62,20 @@ def open_in_firefox(host:str, port:int, width:int = -1, height:int = -1):
 
 
 def init_app_filters(app:Flask):
+	# === filter: base_url ==============================
 	@app.template_filter('base_url')
 	def base_url(url: str):
-		return '{0.scheme}://{0.netloc}'.format(urlsplit(url)).rstrip('/')
+		urlp = urlparse(url)
+		return f'{urlp.scheme}://{urlp.netloc}'
+
+	# === filter: replace_url_port ==============================
+	@app.template_filter('replace_url_port')
+	def replace_url_port(url: str, port: int):
+		urlp = urlparse(url)
+		netloc = urlp.netloc.split(':')[0]
+		if port not in (80, 443):
+			netloc += f':{port}'
+		return urlunparse(urlp._replace(netloc=netloc))
 
 
 def init_app_routes(app:Flask, llm:llm_model.BaseLLM):
@@ -73,6 +86,7 @@ def init_app_routes(app:Flask, llm:llm_model.BaseLLM):
 		template_folder='templates',
 		url_prefix='/')
 
+	# === route: index ==============================
 	@view.route('/', methods=['GET', 'POST'])
 	def index():
 		if request.method == 'POST' and request.is_json:
@@ -90,18 +104,20 @@ def init_app_routes(app:Flask, llm:llm_model.BaseLLM):
 			'index.html',
 			head_title=c.APP_TITLE)
 
+	# === route: llm_list_msgs ==============================
 	@view.route('/llm-list-msgs', methods=['POST'])
 	def llm_list_msgs():
 		return {
 			'message': 'OK',
 			'messages-list': [{
 				'name': llm.name_map[msg['role']],
-				'content': Markup.escape(msg['content'].strip()),
+				'text': Markup.escape(msg['content']),
 				'date': msg['date']
 			} for msg in llm.list_messages()],
 			'is-generating': llm.is_generating
 		}, 200
 
+	# === route: llm_reset_msgs ==============================
 	@view.route('/llm-reset-msgs', methods=['POST'])
 	def llm_reset_msgs():
 		try:
@@ -111,6 +127,7 @@ def init_app_routes(app:Flask, llm:llm_model.BaseLLM):
 			return { 'message': str(e), 'error': True }, 500
 		return { 'message': 'OK' }, 200
 
+	# === route: llm_stop_gen ==============================
 	@view.route('/llm-stop-gen', methods=['POST'])
 	def llm_stop_gen():
 		try:
@@ -119,6 +136,7 @@ def init_app_routes(app:Flask, llm:llm_model.BaseLLM):
 			return { 'message': str(e), 'error': True }, 500
 		return { 'message': 'OK' }, 200
 
+	# === route: error_handler ==============================
 	@app.errorhandler(HTTPException)
 	def error_handler(error):
 		return render_template(

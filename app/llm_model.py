@@ -1,20 +1,20 @@
 import gc
 import os
 import time
-# from typing import Any, Generator
 import torch
 from datetime import datetime as dt
 from threading import Thread
-from transformers import pipeline, TextIteratorStreamer  #, ConversationalPipeline
-from transformers.generation.stopping_criteria import StoppingCriteria, StoppingCriteriaList
-from transformers.models.auto import AutoTokenizer, AutoModelForCausalLM
 
 import constants as c
 
-
 os.environ['HF_DATASETS_OFFLINE'] = '1' if c.Env.OFFLINE_MODE else '0'
 os.environ['TRANSFORMERS_OFFLINE'] = '1' if c.Env.OFFLINE_MODE else '0'
-os.environ['TRANSFORMERS_CACHE'] = os.path.join(os.environ['USERPROFILE'], '.transformers_cache')
+os.environ['HF_HOME'] = os.path.join(os.environ['USERPROFILE'], '.transformers_cache')
+os.environ['TRANSFORMERS_CACHE'] = os.environ['HF_HOME']
+
+from transformers import pipeline, TextIteratorStreamer
+from transformers.generation.stopping_criteria import StoppingCriteria, StoppingCriteriaList
+from transformers.models.auto import AutoTokenizer, AutoModelForCausalLM
 
 
 # ====================================================================
@@ -47,12 +47,6 @@ class VariableStopCriteria (StopCriteria):
 
 
 # ====================================================================
-# class TextGenerationPipeline(ConversationalPipeline):
-# 	def postprocess(self, model_outputs, clean_up_tokenization_spaces:bool = False):
-# 		return super(self.__class__, self).postprocess(model_outputs, clean_up_tokenization_spaces)
-
-
-# ====================================================================
 class BaseLLM:
 	def __init__(self, name:str, device:str = 'auto'):
 		if device == 'auto':
@@ -61,6 +55,8 @@ class BaseLLM:
 		self.name = name
 		self.short_name = name.split('/', 1)[-1]
 		self.name_map = {'user': 'You', 'assistant': self.short_name}
+		self.gen_prompt = ''
+		self.gen_response = ''
 		self.is_generating = False
 		print(f'> Loading {self.__class__.__name__}: {self.full_name}')
 		self.reset_messages()
@@ -71,6 +67,11 @@ class BaseLLM:
 		return f'{self.name} ({self.device.type})'
 
 	@classmethod
+	def clear_cache(cls):
+		gc.collect()
+		torch.cuda.empty_cache()
+
+	@classmethod
 	def date_now(cls) -> str:
 		return dt.now().strftime('%d.%m.%Y %H:%M:%S')
 
@@ -78,24 +79,20 @@ class BaseLLM:
 	def create_message(cls, role:str, content:str) -> dict[str, str]:
 		return {
 			'role': role,
-			'content': content,
+			'content': content.strip(),
 			'date': cls.date_now() }
 
 	def add_message(self, role:str, content:str):
 		self.messages.append(self.create_message(role, content))
 
-	def print_memory_info(self):
-		print(str(torch.cuda.memory_summary(device=self.device, abbreviated=True)))
-
-	def clear_cache(self):
-		gc.collect()
-		torch.cuda.empty_cache()
-
 	def reset_messages(self):
-		self.messages = []
+		self.messages:list[dict[str, str]] = []
 
 	def list_messages(self) -> list[dict[str, str]]:
 		return self.messages[:]
+
+	def print_memory_info(self):
+		print(str(torch.cuda.memory_summary(device=self.device, abbreviated=True)))
 
 	def stop_generating(self):
 		if self.is_generating is False:
@@ -104,25 +101,24 @@ class BaseLLM:
 		if len(self.messages) > 0 and self.messages[-1]['role'] == 'user':
 			self.messages.pop()
 
-	def generate(self, prompt_text:str) -> str:
+	def generate(self, prompt_text:str):
 		sec, gen_wait_sec = 0, 7
 		self.is_generating = True
-		self.add_message('user', prompt_text)
+		self.gen_prompt = prompt_text.strip()
+		self.add_message('user', self.gen_prompt)
 		while self.is_generating and sec < gen_wait_sec:
 			time.sleep(1)
 			sec += 1
-		response = f'Done generating, prompt: "{prompt_text}" ({gen_wait_sec} seconds)'
-		print('> Response:\n', response, '\n', sep='', end='', flush=True)
+		self.gen_response = f'Done generating, prompt: "{self.gen_prompt}" ({gen_wait_sec} seconds)'
+		print('> Response:\n', self.gen_response, '\n', sep='', end='', flush=True)
 		if self.is_generating:
-			self.add_message('assistant', response)
+			self.add_message('assistant', self.gen_response)
 			self.is_generating = False
-			return response
-		return ''
 
 
 # ====================================================================
 class TextGenerationLLM (BaseLLM):
-	def __init__(self, name:str, device:str = 'auto'):
+	def __init__(self, name:str, device:str = 'auto', init_text_stream:bool = True):
 		self.system_prompt = (
 			'Always Remember: '
 			'You\'re a technical AI assistant, a senior programmer and you know a lot about Python. '
@@ -132,7 +128,6 @@ class TextGenerationLLM (BaseLLM):
 		super(self.__class__, self).__init__(name, device)
 
 		self.stop_crit_var = VariableStopCriteria()
-		self.gen_response = ''
 
 		self.pipeline_cfg:dict = dict(
 			device_map=self.device,
@@ -159,7 +154,7 @@ class TextGenerationLLM (BaseLLM):
 			return_tensors='pt',
 			tokenize=False)
 
-		self.streamer_cfg:dict = dict(
+		self.text_iter_cfg:dict = dict(
 			clean_up_tokenization_spaces=None,
 			skip_prompt=True,
 			skip_special_tokens=True,
@@ -177,10 +172,13 @@ class TextGenerationLLM (BaseLLM):
 					self.pipe.model = AutoModelForCausalLM.from_pretrained(self.name, **self.pipeline_cfg)
 
 				if self.pipe.tokenizer is None:
-					self.pipe.tokenizer = AutoTokenizer.from_pretrained(self.name, device_map=self.pipeline_cfg['device_map'])
+					self.pipe.tokenizer = AutoTokenizer.from_pretrained(self.name, device_map=self.device)
 
-				self.streamer = TextIteratorStreamer(self.pipe.tokenizer, **self.streamer_cfg)  #type:ignore
-				self.pipe_cfg['streamer'] = self.streamer
+				if init_text_stream:
+					self.text_iter_streamer = TextIteratorStreamer(self.pipe.tokenizer, **self.text_iter_cfg)  #type:ignore
+					self.pipe_cfg['streamer'] = self.text_iter_streamer
+				else:
+					self.text_iter_streamer = None
 
 	def reset_messages(self):
 		self.messages = [self.create_message('system', self.system_prompt)]
@@ -197,7 +195,8 @@ class TextGenerationLLM (BaseLLM):
 			return
 		self.is_generating = False
 		self.stop_crit_var.stop()
-		self.join_pipe_thread()
+		if self.text_iter_streamer is not None:
+			self.join_pipe_thread()
 		if len(self.messages) > 1 and self.messages[-1]['role'] == 'user':
 			self.messages.pop()
 
@@ -211,62 +210,52 @@ class TextGenerationLLM (BaseLLM):
 			if key in ('role', 'content')
 		} for msg in self.messages]
 
-	# def add_stream_msg(self):
-	# 	if self.gen_response:
-	# 		if self.is_generating:
-	# 			self.add_message('assistant', self.gen_response)
-	# 			self.is_generating = False
-
-	# def generate_stream(self, inputs:str | list[int]) -> Generator[str, Any, Any]:
-	# 	thread = Thread(target=self.pipe, args=[inputs], kwargs=self.pipe_cfg)
-	# 	thread.start()
-	# 	self.gen_response = ''
-	# 	for text_out in self.streamer:
-	# 		text = str(text_out)
-	# 		self.gen_response += text
-	# 		yield text
-
-	def generate(self, prompt_text:str) -> str:
+	def generate(self, prompt_text:str):
 		# TextIteratorStreamer:  https://huggingface.co/docs/transformers/main/en/internal/generation_utils#transformers.TextIteratorStreamer.example
 		# gen. utils:            https://huggingface.co/docs/transformers/main/en/internal/generation_utils
 		# gen. strategy:         https://huggingface.co/docs/transformers/generation_strategies
 		# chat template:         https://huggingface.co/docs/transformers/main/en/chat_templating
 		# pipelines:             https://huggingface.co/docs/transformers/main_classes/pipelines
 
-		prompt_text = prompt_text.strip()
-		if not prompt_text:
-			return ''
+		self.gen_prompt = prompt_text.strip()
+		self.gen_response = ''
+		if not self.gen_prompt:
+			return print('> Error: Prompt text is empty!')
 
 		self.is_generating = True
 		print(f'> Generating response: {self.full_name}')
-		self.add_message('user', prompt_text)
+		self.add_message('user', self.gen_prompt)
 		self.stop_crit_var.reset()
 
 		if self.pipe.tokenizer is None:
-			return ''
+			return print('> Error: No tokenizer loaded !')
 
 		with torch.no_grad():
 			with self.pipe.device_placement():
 				inputs = self.pipe.tokenizer.apply_chat_template(self.chat_template_msgs(), **self.tokenizer_cfg)
-				self.pipe_thread = Thread(target=self.pipe, args=[inputs], kwargs=self.pipe_cfg)
-				self.pipe_thread.start()
-				response = ''
-				print('> Response:\n', end='', flush=True)
-				for text_out in self.streamer:
-					response += text_out
-					print(text_out, end='')
-				print(end='\n', flush=True)
-		if response:
-			if self.is_generating:
-				self.add_message('assistant', response)
+				if self.text_iter_streamer is None:
+					outputs = self.pipe(inputs, **self.pipe_cfg)  #type:ignore
+					if outputs:
+						self.gen_response = str(outputs[0]['generated_text']).strip()  #type:ignore
+					print(f'> Response:\n{self.gen_response}\n> ---------\n', end='', flush=True)
+				else:
+					self.pipe_thread = Thread(target=self.pipe, args=[inputs], kwargs=self.pipe_cfg)
+					self.pipe_thread.start()
+					print('> Response:\n', end='', flush=True)
+					for text_out in self.text_iter_streamer:
+						self.gen_response += text_out
+						print(text_out, end='', flush=True)
+					print('\n> ---------\n', end='', flush=True)
+
+		if self.gen_response and self.is_generating:
+			self.add_message('assistant', self.gen_response)
+			if self.text_iter_streamer is not None:
 				self.join_pipe_thread()
-				self.is_generating = False
-				return response
-		return ''
+			self.is_generating = False
 
 
 # ====================================================================
-def load_model() -> BaseLLM:
+def load() -> BaseLLM|TextGenerationLLM:
 	if c.Env.DEV_MODE:
 		return BaseLLM('Testing-LLM')
 	return TextGenerationLLM(c.LLM_MODEL_NAME)

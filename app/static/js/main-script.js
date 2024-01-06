@@ -40,11 +40,11 @@
 			}
 		};
 
-		const addMessage = (name, content = '', date = '') => {
+		const addMessage = (name, text = '', date = '') => {
 			const msgElement = document.createElement('p');
 			msgElement.innerHTML = `<strong>${name}</strong>`;
-			if (content)
-				msgElement.innerHTML += content;
+			if (text)
+				msgElement.innerHTML += text;
 			if (date)
 				msgElement.innerHTML += `<span>${date}</span>`;
 			msgElement.setAttribute('class', 'message');
@@ -81,7 +81,7 @@
 				return;
 			msgsElement.innerHTML = '';
 			for (const msg of response['messages-list']) {
-				addMessage(msg.name, msg.content.replaceAll('\n', '<br/>'), msg.date);
+				addMessage(msg.name, msg.text.replaceAll('\n', '<br/>'), msg.date);
 			}
 		};
 

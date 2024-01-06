@@ -1,12 +1,9 @@
-import constants as c
 import llm_model
 import web_app
 
 
 def main() -> int:
-	if c.Env.DEV_MODE:
-		print('> Developer Mode Enabled!')
-	web_app.main(llm_model.load_model())
+	web_app.main(llm_model.load())
 	return 0
 
 

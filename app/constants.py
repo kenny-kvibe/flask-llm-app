@@ -10,9 +10,10 @@ ROOT_PATH = os.path.dirname(__file__)
 dotenv.load_dotenv(os.path.join(ROOT_PATH, '.env'))
 
 BROWSER_BIN_PATH = os.path.join(
-	os.environ.get('PROGRAMFILES', 'C:\\Program Files'), 'Mozilla Firefox', 'private_browsing.exe')
+	os.environ.get('PROGRAMFILES', 'C:\\Program Files'),
+	'Mozilla Firefox', 'private_browsing.exe')
 
-APP_TITLE = 'Chat AI'
+APP_TITLE = 'Flask LLM'
 
 # HF:  https://huggingface.co/HuggingFaceH4/zephyr-7b-beta
 LLM_MODEL_NAME = 'HuggingFaceH4/zephyr-7b-beta'
@@ -40,7 +41,7 @@ class DefaultEnv:
 	@classmethod
 	def get_env_int(cls, env_key:str, default:int = 0) -> int:
 		try:
-			return int(os.environ.get('PORT', default))
+			return int(os.environ.get(env_key, default))
 		except ValueError:
 			return default
 
@@ -56,12 +57,11 @@ class DefaultEnv:
 
 
 class Env:
-	OFFLINE_MODE = DefaultEnv.get_env_bool('OFFLINE_MODE', DefaultEnv.OFFLINE_MODE)
 	OPEN_BROWSER = DefaultEnv.get_arg_env_bool(1, 'OPEN_BROWSER', DefaultEnv.OPEN_BROWSER)
 	DEV_MODE     = DefaultEnv.get_arg_env_bool(2, 'DEV_MODE',     DefaultEnv.DEV_MODE)
+	OFFLINE_MODE = DefaultEnv.get_env_bool(       'OFFLINE_MODE', DefaultEnv.OFFLINE_MODE)
+	PORT         = DefaultEnv.get_env_int(        'PORT',         DefaultEnv.PORT)
 
 	HOST = os.environ.get('HOST', '')
 	if HOST == '':
 		HOST = get_local_ipv4()
-
-	PORT = DefaultEnv.get_env_int('PORT', DefaultEnv.PORT)
