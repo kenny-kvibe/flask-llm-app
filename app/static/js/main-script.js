@@ -83,7 +83,6 @@
 			await sendPostRequest(`${baseUrl}/llm-reset-msgs`);
 			generator.isGenerating = false;
 			stopCheckGenerating();
-			await llmUpdateMessagesList();
 		};
 
 		const llmStopGenerating = async () => {
@@ -91,14 +90,12 @@
 			await sendPostRequest(`${baseUrl}/llm-stop-gen`);
 			generator.isGenerating = false;
 			stopCheckGenerating();
-			await llmUpdateMessagesList();
 		};
 
 		const startGenerating = async () => {
 			if (generator.isGenerating) return;
 			const text = inputText.value.trim();
 			inputText.value = '';
-
 			if (text) {
 				generator.isGenerating = true;
 				await startCheckGenerating();
@@ -107,13 +104,19 @@
 			}
 		};
 
-		const stopCheckGenerating = async () => {
+		const stopCheckGenerating = async (focusInput=false) => {
 			window.clearInterval(generator.updateGenInterval);
+			await llmUpdateMessagesList();
+			scrollToInputText(true);
+			inputText.removeAttribute('disabled');
+			if (focusInput)
+				inputText.focus();
 		};
 
 		const startCheckGenerating = async () => {
 			await llmUpdateMessagesList();
 			window.clearInterval(generator.updateGenInterval);
+			inputText.setAttribute('disabled', '');
 			generator.updateGenInterval = setInterval(async () => {
 				if (generator.response !== null)
 					return;
@@ -121,8 +124,7 @@
 				scrollToInputText();
 				if (generator.isGenerating)
 					return;
-				stopCheckGenerating();
-				scrollToInputText(true);
+				stopCheckGenerating(true);
 			}, generator.updateGenIntSpeed);
 		};
 
@@ -133,8 +135,9 @@
 		inputStop.addEventListener('mouseup',   async evt => { if (isMouseUpLeftButton(evt)) await llmStopGenerating();  }, false);
 
 		await llmUpdateMessagesList(true, true);
-		scrollToInputText();
-		inputText.focus();
+		scrollToInputText(true);
+		if (!inputText.hasAttribute('disabled'))
+			inputText.focus();
 		if (generator.isGenerating) {
 			await startCheckGenerating();
 			scrollToInputText();
