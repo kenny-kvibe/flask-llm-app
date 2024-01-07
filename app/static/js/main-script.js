@@ -136,11 +136,10 @@
 
 		await llmUpdateMessagesList(true, true);
 		scrollToInputText(true);
-		if (!inputText.hasAttribute('disabled'))
-			inputText.focus();
 		if (generator.isGenerating) {
 			await startCheckGenerating();
-			scrollToInputText();
-		}
+		} else
+			inputText.focus();
+		scrollToInputText();
 	});
 })();
