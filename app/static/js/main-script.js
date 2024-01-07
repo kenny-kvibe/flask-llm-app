@@ -17,7 +17,7 @@
 		const generator = {
 			isGenerating: false,
 			response: null,
-			updateGenIntSpeed: 120,
+			updateGenIntSpeed: 200,
 			updateGenInterval: -1,
 		};
 
@@ -136,9 +136,9 @@
 
 		await llmUpdateMessagesList(true, true);
 		scrollToInputText(true);
-		if (generator.isGenerating) {
+		if (generator.isGenerating)
 			await startCheckGenerating();
-		} else
+		else
 			inputText.focus();
 		scrollToInputText();
 	});
