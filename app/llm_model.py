@@ -125,7 +125,8 @@ class TextGenerationLLM (BaseLLM):
 		self.system_prompt = (
 			'Always Remember: '
 			'You\'re a technical AI assistant, a senior programmer and you know a lot about Python. '
-			'You respond in a very short answer, straight to the point and answer truthfully.')
+			'You respond in a very short answer, straight to the point and answer truthfully, '
+			'do not explain yourself just simply give a short answer.')
 
 		super(self.__class__, self).__init__(name, device)
 

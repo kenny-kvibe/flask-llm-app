@@ -87,6 +87,7 @@
 			}
 
 			#inputs .input,
+			#messages-list .select-copy-btn,
 			#messages-list .message {
 				font-size: 14px;
 				line-height: 20px;
@@ -175,14 +176,27 @@
 						color: var(--primary-color-1);
 					}
 
-					span {
+					.date {
 						display: none;
 						position: absolute;
 						right: 0;
 						top: 0;
 					}
 
-					&:hover span {
+					.select-copy-btn {
+						z-index: 10;
+						padding: 2px 5px;
+						margin: -2px 7px -2px 0;
+						line-height: 16px;
+						cursor: pointer;
+
+						&:active,
+						&:hover {
+							border-color: var(--fg-color-1);
+						}
+					}
+
+					&:hover .date {
 						display: block;
 						border-bottom: 1px solid var(--border-color-1);
 						border-left: 1px solid var(--border-color-1);

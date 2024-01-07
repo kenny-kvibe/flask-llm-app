@@ -46,13 +46,36 @@
 		const isMouseUpLeftButton = evt => (evt.type == 'mouseup' && evt.button == 0);              // Accepts => MouseUp: Left-Button
 		const isKeyUpCtrlEnter = evt => (evt.type == 'keyup' && evt.ctrlKey && evt.keyCode == 13);  // Accepts => KeyUp:   Ctrl+Enter
 
+		window.copyMessageText = evt => {
+			console.log('copy....', evt);
+		};
+
+		const addCopyBtnEvents = () => {
+			const copyButtons = msgsElement.querySelectorAll('.select-copy-btn');
+			if (copyButtons) {
+				for (const copyBtn of copyButtons) {
+					copyBtn.addEventListener('mouseup', evt => {
+						if (!isMouseUpLeftButton(evt)) return;
+						const msgElement = evt.target.parentNode.parentNode.querySelector('.text');
+						const selection = window.getSelection();
+						const selectRange = document.createRange();
+						selection.removeAllRanges();
+						selectRange.selectNodeContents(msgElement);
+						selection.addRange(selectRange);
+						navigator.clipboard.writeText(msgElement.innerText);
+					}, false);
+				}
+			}
+		};
+
 		const addMessage = (name, text = '', date = '') => {
 			const msgElement = document.createElement('p');
-			msgElement.innerHTML = `<strong>${name}</strong>`;
+			let html = `<strong>${name}</strong>`;
 			if (text)
-				msgElement.innerHTML += text;
+				html += `<span class="text">${text}</span>`;
 			if (date)
-				msgElement.innerHTML += `<span>${date}</span>`;
+				html += `<span class="date"><input type="button" value="Copy" class="select-copy-btn"/>${date}</span>`;
+			msgElement.innerHTML = html;
 			msgElement.setAttribute('class', 'message');
 			msgsElement.appendChild(msgElement);
 			return msgElement;
@@ -78,6 +101,7 @@
 				if (genResponse.text.length > 0 && genResponse.role != msgList[msgList.length-1].role)
 					addMessage(genResponse.name, genResponse.text.replaceAll('\n', '<br/>'), genResponse.date);
 			}
+			addCopyBtnEvents();
 			generator.response = null;
 		};
 
