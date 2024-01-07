@@ -120,7 +120,7 @@
 			generator.updateGenInterval = setInterval(async () => {
 				if (generator.response !== null)
 					return;
-				await llmUpdateMessagesList(true, true);
+				await llmUpdateMessagesList(true, generator.isGenerating);
 				scrollToInputText();
 				if (generator.isGenerating)
 					return;
