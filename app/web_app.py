@@ -90,7 +90,7 @@ def init_app_routes(app:Flask, llm:llm_model.LLM):
 		template_folder='templates',
 		url_prefix='/')
 
-	def json_response(message:Any, code:int = 200, data:dict|None = None) -> tuple[dict[str, Any], int]:
+	def json_response(message:Any, code:int = 200, data:dict[str, Any] | None = None) -> tuple[dict[str, Any], int]:
 		response = { 'message': str(message) }
 		if data is not None:
 			response.update(data)
@@ -119,14 +119,19 @@ def init_app_routes(app:Flask, llm:llm_model.LLM):
 	@view.route('/llm-list-msgs', methods=['POST'])
 	def llm_list_msgs():
 		return json_response('OK', 200, {
-			'prompt': llm.gen_prompt,
-			'response': llm.gen_response,
+			'is-generating': llm.is_generating,
+			'gen-response': {
+				'role': 'assistant',
+				'name': llm.name_map['assistant'],
+				'text': Markup.escape(llm.gen_response),
+				'date': llm.date_now()
+			},
 			'messages-list': [{
+				'role': msg['role'],
 				'name': llm.name_map[msg['role']],
-				'date': msg['date'],
-				'text': Markup.escape(msg['content'])
-			} for msg in llm.list_messages()],
-			'is-generating': llm.is_generating
+				'text': Markup.escape(msg['content']),
+				'date': msg['date']
+			} for msg in llm.list_messages()]
 		})
 
 	# === route: llm_reset_msgs ==============================
