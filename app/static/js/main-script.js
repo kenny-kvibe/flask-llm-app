@@ -17,7 +17,7 @@
 		const generator = {
 			isGenerating: false,
 			response: null,
-			updateGenIntSpeed: 100,
+			updateGenIntSpeed: 120,
 			updateGenInterval: -1,
 		};
 
@@ -73,7 +73,7 @@
 			}
 			if (addGenResponse) {
 				const genResponse = generator.response['gen-response'];
-				if (generator.isGenerating && genResponse)
+				if (generator.isGenerating && genResponse && genResponse.text.length > 0)
 					addMessage(genResponse.name, genResponse.text.replaceAll('\n', '<br/>'), genResponse.date);
 			}
 			generator.response = null;
@@ -115,8 +115,8 @@
 
 		const startCheckGenerating = async () => {
 			await llmUpdateMessagesList();
-			window.clearInterval(generator.updateGenInterval);
 			inputText.setAttribute('disabled', '');
+			window.clearInterval(generator.updateGenInterval);
 			generator.updateGenInterval = setInterval(async () => {
 				if (generator.response !== null)
 					return;
