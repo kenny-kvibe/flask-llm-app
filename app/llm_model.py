@@ -224,7 +224,7 @@ class TextGenerationLLM (BaseLLM):
 			return print('> Error: Prompt text is empty!')
 
 		if self.pipe.tokenizer is None:
-			return print('> Error: No tokenizer loaded !')
+			return print('> Error: No tokenizer loaded!')
 
 		self.is_generating = True
 
@@ -259,14 +259,14 @@ class TextGenerationLLM (BaseLLM):
 
 
 # ====================================================================
-def load() -> LLM:
+def load(text_streamer:bool = True) -> LLM:
 	if c.Env.DEV_MODE:
 		return BaseLLM('Testing-LLM')
-	return TextGenerationLLM(c.LLM_MODEL_NAME, 'cuda', True)
+	return TextGenerationLLM(c.LLM_MODEL_NAME, 'cuda', text_streamer)
 
 
 if __name__ == '__main__':
 	llm = TextGenerationLLM(c.LLM_MODEL_NAME, init_text_streamer=False)
-	llm.generate('Hello, what is the Sun?', True)
-	llm.generate('What about the Moon, Mars and other planets?', True)
+	llm.generate('Hello, explain in a short answer, what is an apple tree?', True)
+	llm.generate('What about strawberries?', True)
 	raise SystemExit(0)

@@ -87,10 +87,10 @@
 		};
 
 		const scrollToInputText = (smooth=false) => {
+			const scrollConfig = { block: 'end' };
 			if (smooth)
-				inputsDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
-			else
-				inputsDiv.scrollIntoView({ block: 'end' });
+				scrollConfig.behavior = 'smooth';
+			inputsDiv.scrollIntoView(scrollConfig);
 			inputText.focus();
 		};
 

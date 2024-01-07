@@ -4,6 +4,8 @@ import psutil
 import socket
 import sys
 import warnings
+from typing import Any
+
 
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -12,11 +14,6 @@ warnings.filterwarnings('ignore', category=UserWarning)
 ROOT_PATH = os.path.dirname(__file__)
 dotenv.load_dotenv(os.path.join(ROOT_PATH, '.env'))
 
-
-BROWSER_BIN_PATH   = os.path.join(os.environ['PROGRAMFILES'], 'Mozilla Firefox', 'private_browsing.exe')
-TRANSFORMERS_CACHE = os.path.join(os.environ['USERPROFILE'], '.transformers_cache')
-
-
 APP_TITLE = 'Flask LLM'
 
 # HF:  https://huggingface.co/HuggingFaceH4/zephyr-7b-beta
@@ -24,6 +21,8 @@ APP_TITLE = 'Flask LLM'
 
 LLM_MODEL_NAME = 'HuggingFaceH4/zephyr-7b-beta'
 # LLM_MODEL_NAME = 'argilla/notus-7b-v1'
+
+BROWSER_BIN_PATH   = os.path.join(os.environ['PROGRAMFILES'], 'Mozilla Firefox', 'private_browsing.exe')
 
 
 def get_local_ipv4(start_ipv4:str = '192.168.') -> str:
@@ -40,9 +39,9 @@ class DefaultEnv:
 	argc = len(sys.argv)
 	true_params = ('1', 'true', 'y', 'yes', True, 1)
 
-	OFFLINE_MODE = False
-	OPEN_BROWSER = True
 	DEV_MODE = False
+	OPEN_BROWSER = True
+	OFFLINE_MODE = False
 	PORT = 80
 
 	@classmethod
@@ -62,10 +61,14 @@ class DefaultEnv:
 			return sys.argv[arg_idx].lower() in cls.true_params
 		return cls.get_env_bool(env_key, default)
 
+	@classmethod
+	def set_env(cls, env_key:str, env_value:Any):
+		os.environ[env_key] = str(env_value)
+
 
 class Env:
-	OPEN_BROWSER = DefaultEnv.get_arg_env_bool(1, 'OPEN_BROWSER', DefaultEnv.OPEN_BROWSER)
-	DEV_MODE     = DefaultEnv.get_arg_env_bool(2, 'DEV_MODE',     DefaultEnv.DEV_MODE)
+	DEV_MODE     = DefaultEnv.get_arg_env_bool(1, 'DEV_MODE',     DefaultEnv.DEV_MODE)
+	OPEN_BROWSER = DefaultEnv.get_arg_env_bool(2, 'OPEN_BROWSER', DefaultEnv.OPEN_BROWSER)
 	OFFLINE_MODE = DefaultEnv.get_env_bool(       'OFFLINE_MODE', DefaultEnv.OFFLINE_MODE)
 	PORT         = DefaultEnv.get_env_int(        'PORT',         DefaultEnv.PORT)
 
@@ -73,8 +76,9 @@ class Env:
 	if HOST == '':
 		HOST = get_local_ipv4()
 
+	TRANSFORMERS_CACHE = os.path.join(os.environ['USERPROFILE'], '.transformers_cache')
 
-os.environ['HF_DATASETS_OFFLINE'] = '1' if Env.OFFLINE_MODE else '0'
-os.environ['TRANSFORMERS_OFFLINE'] = '1' if Env.OFFLINE_MODE else '0'
-os.environ['TRANSFORMERS_CACHE'] = TRANSFORMERS_CACHE
-os.environ['HF_HOME'] = TRANSFORMERS_CACHE
+	DefaultEnv.set_env('HF_DATASETS_OFFLINE', 1 if OFFLINE_MODE else 0)
+	DefaultEnv.set_env('TRANSFORMERS_OFFLINE', 1 if OFFLINE_MODE else 0)
+	DefaultEnv.set_env('TRANSFORMERS_CACHE', TRANSFORMERS_CACHE)
+	DefaultEnv.set_env('HF_HOME', TRANSFORMERS_CACHE)

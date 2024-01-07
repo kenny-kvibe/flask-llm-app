@@ -25,8 +25,8 @@ python.exe -m pip install -U "torch==2.1.2" torchvision torchaudio torchdiffeq t
 > Run App (CLI, WebUI)
 
 ```sh
-# Argument1 =>  OPEN_BROWSER  (open the web browser after app init) Default: "1"
-# Argument2 =>  DEV_MODE      (app development, no LLM gets loaded) Default: "0"
+# Argument1 =>  DEV_MODE      (app development, no LLM gets loaded, for cli & web apps) Default: "0"
+# Argument2 =>  OPEN_BROWSER  (open the web browser after app init, only for web app)   Default: "1"
 # Argument `-B` =>  don't write byte-code in "__pycache__" folders
 cd app
 python.exe -B cli_app.py
