@@ -71,9 +71,9 @@
 			for (const message of msgList) {
 				addMessage(message.name, message.text.replaceAll('\n', '<br/>'), message.date);
 			}
-			if (addGenResponse) {
+			if (addGenResponse && generator.isGenerating) {
 				const genResponse = generator.response['gen-response'];
-				if (generator.isGenerating && genResponse && genResponse.text.length > 0)
+				if (genResponse && genResponse.text.length > 0)
 					addMessage(genResponse.name, genResponse.text.replaceAll('\n', '<br/>'), genResponse.date);
 			}
 			generator.response = null;
@@ -82,6 +82,7 @@
 		const llmResetMessages = async () => {
 			await sendPostRequest(`${baseUrl}/llm-reset-msgs`);
 			generator.isGenerating = false;
+			await llmUpdateMessagesList();
 			stopCheckGenerating();
 		};
 
@@ -89,7 +90,8 @@
 			if (!generator.isGenerating) return;
 			await sendPostRequest(`${baseUrl}/llm-stop-gen`);
 			generator.isGenerating = false;
-			stopCheckGenerating();
+			await llmUpdateMessagesList();
+			stopCheckGenerating(true);
 		};
 
 		const startGenerating = async () => {
@@ -106,19 +108,19 @@
 
 		const stopCheckGenerating = async (focusInput=false) => {
 			window.clearInterval(generator.updateGenInterval);
-			await llmUpdateMessagesList();
-			scrollToInputText(true);
 			inputText.removeAttribute('disabled');
+			scrollToInputText(true);
 			if (focusInput)
 				inputText.focus();
 		};
 
 		const startCheckGenerating = async () => {
-			await llmUpdateMessagesList();
+			if (generator.response == null)
+				await llmUpdateMessagesList();
 			inputText.setAttribute('disabled', '');
 			window.clearInterval(generator.updateGenInterval);
 			generator.updateGenInterval = setInterval(async () => {
-				if (generator.response !== null)
+				if (generator.response != null)
 					return;
 				await llmUpdateMessagesList(true, generator.isGenerating);
 				scrollToInputText();
