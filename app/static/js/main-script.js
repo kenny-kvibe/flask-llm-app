@@ -73,7 +73,9 @@
 			}
 			if (addGenResponse && generator.isGenerating) {
 				const genResponse = generator.response['gen-response'];
-				if (genResponse && genResponse.text.length > 0)
+				if (!genResponse)
+					return;
+				if (genResponse.text.length > 0 && genResponse.role != msgList[msgList.length-1].role)
 					addMessage(genResponse.name, genResponse.text.replaceAll('\n', '<br/>'), genResponse.date);
 			}
 			generator.response = null;
